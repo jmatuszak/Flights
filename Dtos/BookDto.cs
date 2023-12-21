@@ -2,7 +2,7 @@
 
 namespace Flights.Dtos
 {
-    public record Book(
+    public record BookDto(
         [Required]
         Guid FlightId,
         [Required]
