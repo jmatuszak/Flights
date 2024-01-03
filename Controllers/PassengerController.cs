@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Flights.Dtos;
-using Flights.ReadModel;
+using Flights.ReadModels;
 using Flights.Domain.Entities;
 using Flights.Data;
 

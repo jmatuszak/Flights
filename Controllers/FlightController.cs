@@ -1,10 +1,11 @@
-﻿using Flights.ReadModel;
+﻿using Flights.ReadModels;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using Flights.Domain.Entities;
 using Flights.Dtos;
 using Flights.Domain.Errors;
 using Flights.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Flights.Controllers;
 
@@ -25,9 +26,33 @@ public class FlightController : ControllerBase
     [ProducesResponseType(500)]
     [ProducesResponseType(typeof(IEnumerable<FlightRm>),200)]
     [HttpGet]
-    public IEnumerable<FlightRm> Search()
+    public IEnumerable<FlightRm> Search([FromQuery]FlightSearchParameters @params)
     {
-        var flightRmList = _entities.Flights.Select(flight => new FlightRm(
+        _logger.LogInformation("Searching for a flight for: {Destination}", @params.Destination);
+
+        IQueryable<Flight> flights = _entities.Flights;
+
+        if (!string.IsNullOrWhiteSpace(@params.Destination))
+            flights = flights.Where(f => f.Arrival.Place.Contains(@params.Destination));
+
+        if (!string.IsNullOrWhiteSpace(@params.From))
+            flights = flights.Where(f => f.Departure.Place.Contains(@params.From));
+
+        if (@params.FromDate != null)
+            flights = flights.Where(f => f.Departure.Time >= @params.FromDate.Value.Date);
+
+        if(@params.ToDate != null)
+            flights = flights.Where(f=>f.Arrival.Time <= @params.ToDate.Value.Date.AddDays(1).AddTicks(-1));
+
+        if (@params.NumberOfPassengers != null && @params.NumberOfPassengers != 0)
+            flights = flights.Where(f => f.RemainingNumberOfSeats >= @params.NumberOfPassengers);
+        else
+            flights = flights.Where(f => f.RemainingNumberOfSeats > 0);
+
+
+
+        var flightRmList = flights
+            .Select(flight => new FlightRm(
             flight.Id,
             flight.Airline,
             flight.Price,
@@ -85,7 +110,13 @@ public class FlightController : ControllerBase
         if (error is OverbookError)
             return Conflict(new { message = "Not enough seats." });
 
-        _entities.SaveChanges();
+        try
+        {
+            _entities.SaveChanges();
+        }catch (DbUpdateConcurrencyException e)
+        {
+            return Conflict(new { message = "An error occured while booking. Please try again." });
+        }
 
         return CreatedAtAction(nameof(Find), new { id = dto.FlightId });
     }

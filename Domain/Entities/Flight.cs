@@ -1,5 +1,5 @@
 ﻿using Flights.Domain.Errors;
-using Flights.ReadModel;
+using Flights.ReadModels;
 
 namespace Flights.Domain.Entities
 {
@@ -52,6 +52,19 @@ namespace Flights.Domain.Entities
             );
 
             flight.RemainingNumberOfSeats -= numberOfSeats;
+
+            return null;
+        }
+
+        public object? CancelBooking(string passengerEmail, byte numberOfSeats)
+        {
+            var booking = Bookings.FirstOrDefault(b => b.NumberOfSeats == numberOfSeats && passengerEmail.ToLower() == b.PassengerEmail.ToLower());
+
+            if (booking == null)
+                return new NotFoundError();
+
+            Bookings.Remove(booking);
+            RemainingNumberOfSeats += booking.NumberOfSeats;
 
             return null;
         }
